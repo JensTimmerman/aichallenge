@@ -1,4 +1,4 @@
-from flask import render_template, request
+from flask import render_template
 from sqlalchemy import desc
 
 
@@ -6,7 +6,6 @@ from battlebots.web import app
 from battlebots.web.pagination_utils import paginate
 from battlebots.database import session
 from battlebots.database.models import Bot, Match
-
 
 
 @app.route('/home')
@@ -22,7 +21,7 @@ def ranking():
     return render_template('ranking.html', bots=ranked_bots)
 
 
-@app.route("/matches/")
+@app.route('/matches/')
 def matches():
     matches_ = session.query(Match).order_by(desc(Match.id))
     paginated_matches_ = paginate(matches_)
