@@ -1,9 +1,12 @@
-from flask import render_template
+from flask import render_template, request
 from sqlalchemy import desc
 
+
 from battlebots.web import app
+from battlebots.web.pagination_utils import paginate
 from battlebots.database import session
 from battlebots.database.models import Bot, Match
+
 
 
 @app.route('/home')
@@ -19,11 +22,12 @@ def ranking():
     return render_template('ranking.html', bots=ranked_bots)
 
 
-@app.route('/matches/')
+@app.route("/matches/")
 def matches():
-    # TODO add pagination
-    matches_ = session.query(Match).order_by(desc(Match.id)).limit(40)
-    return render_template('matches.html', matches=matches_)
+    matches_ = session.query(Match).order_by(desc(Match.id))
+    paginated_matches_ = paginate(matches_)
+
+    return render_template('matches.html', paginated_matches=paginated_matches_)
 
 
 @app.route('/rules')
