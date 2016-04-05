@@ -30,6 +30,7 @@ class User(Base, UserMixin):
                          unique=True, nullable=False)
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password = db.Column(db.String(120), index=True, nullable=False)
+    bots = relationship('Bot', back_populates='user')
 
     def __repr__(self):
         return '<User {}>'.format(self.nickname)
@@ -55,7 +56,7 @@ class Bot(Base):
         db.ForeignKey('user.id'),
         nullable=False)
 
-    user = relationship(User, backref='bots')
+    user = relationship(User, back_populates='bots')
 
     name = db.Column(
         db.String(BOTNAME_LENTGH[1]),
