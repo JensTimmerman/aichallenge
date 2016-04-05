@@ -1,7 +1,6 @@
 from flask import render_template
 from sqlalchemy import desc
 
-
 from battlebots.web import app
 from battlebots.web.pagination_utils import paginate
 from battlebots.database import session
