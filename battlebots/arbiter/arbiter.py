@@ -282,7 +282,8 @@ class March:
                                .format(self.owner))
         self.size = min(self.size, self.origin.garrison)
         self.origin.garrison -= self.size
-        self.road.add_march(self, steps)
+        if self.size:
+            self.road.add_march(self, steps)
 
     def die(self):
         self.owner.marches.remove(self)
