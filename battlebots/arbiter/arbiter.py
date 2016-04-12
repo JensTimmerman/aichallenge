@@ -282,9 +282,8 @@ class March:
                                'available. Sending all remaining soldiers.'
                                .format(self.owner))
         self.size = min(self.size, self.origin.garrison)
-        if self.size:
-            self.origin.garrison -= self.size
-            self.road.add_march(self, steps)
+        self.origin.garrison -= self.size
+        self.road.add_march(self, steps)
 
     def die(self):
         self.owner.marches.remove(self)
@@ -381,7 +380,12 @@ class Player:
         if stderr:
             stderr = stderr.decode('utf8')
             self.warning('Stderr of {} was {}'.format(self.name, stderr))
-        self.process._transport.close()
+        try:
+            self.process._transport.close()
+        except ProcessLookupError:
+            logging.warning('Error when closing {}'.format(self.process))
+            # if the process doesn't exist, it it probably closed, right?
+            pass
 
     def capture(self, fort):
         if fort.owner:
