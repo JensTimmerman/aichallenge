@@ -1,4 +1,5 @@
 import logging
+import gzip
 import os.path
 import re
 import subprocess as sp
@@ -9,8 +10,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import sqlalchemy as db
 from sqlalchemy import desc
 from sqlalchemy.orm import backref, relationship
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.ext.associationproxy import association_proxy
+from sqlalchemy.ext.declarative import declarative_base
+
 
 from battlebots import backports, config, sandbox
 from battlebots.database import session
@@ -26,10 +28,21 @@ BOTNAME_LENTGH = (1, 32)
 class User(Base, UserMixin):
     __tablename__ = 'user'
     id = db.Column(db.Integer, primary_key=True)
-    nickname = db.Column(db.String(NICKNAME_LENGTH[1]), index=True,
-                         unique=True, nullable=False)
+
+    nickname = db.Column(
+        db.String(NICKNAME_LENGTH[1]),
+        index=True,
+        unique=True,
+        nullable=False)
+
     email = db.Column(db.String(120), index=True, unique=True, nullable=False)
     password = db.Column(db.String(120), index=True, nullable=False)
+
+    bots = relationship(
+        'Bot',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        passive_deletes=True)
 
     def __repr__(self):
         return '<User {}>'.format(self.nickname)
@@ -52,10 +65,10 @@ class Bot(Base):
 
     user_id = db.Column(
         db.Integer,
-        db.ForeignKey('user.id'),
+        db.ForeignKey('user.id', ondelete='CASCADE'),
         nullable=False)
 
-    user = relationship(User, backref='bots')
+    user = relationship(User, back_populates='bots')
 
     name = db.Column(
         db.String(BOTNAME_LENTGH[1]),
@@ -72,9 +85,13 @@ class Bot(Base):
     matches = relationship(
         'Match',
         secondary='match_participation',
-        back_populates='bots')
+        back_populates='bots',
+        cascade='all')
 
-    matches_won = relationship('Match', back_populates='winner')
+    matches_won = relationship(
+        'Match',
+        back_populates='winner',
+        cascade='all')
 
     compile_cmd = db.Column(db.String(200))
     run_cmd = db.Column(db.String(200), nullable=False)
@@ -120,10 +137,10 @@ class Bot(Base):
             self.compiled = True
             return True
         except sp.SubprocessError as error:
-            error = '{error}\nStdout: {stdout}Stderr: {stderr}'.format(
+            error = '{error}\nStdout: {stdout}\nStderr: {stderr}'.format(
                 error=error,
-                stdout=error.stdout.decode('utf8'),
-                stderr=error.stderr.decode('utf8'))
+                stdout=error.output.decode('utf8').rstrip(),
+                stderr=error.stderr.decode('utf8').rstrip())
             logging.warning(error)
             self.compile_errors = error
             return False
@@ -177,17 +194,24 @@ class Match(Base):
 
     @property
     def log_path(self):
-        return os.path.join(config.MATCH_LOG_DIR, str(self.id))
+        if not self.id:
+            raise ValueError('ID was not set for this match. '
+                             'Did you commit it to the database?')
+        return os.path.join(config.MATCH_LOG_DIR, str(self.id) + '.gz')
 
     @property
     def log(self):
-        with open(self.log_path) as log_file:
-            return log_file.read()
+        try:
+            with gzip.open(self.log_path, 'rb') as log_file:
+                return log_file.read().decode('utf-8')
+        except FileNotFoundError:
+            logging.warning('File not found {}'.format(self.log_path))
+            return None
 
     def save_log(self, content):
         os.makedirs(os.path.dirname(self.log_path), exist_ok=True)
-        with open(self.log_path, 'w') as logfile:
-            logfile.write(content)
+        with gzip.open(self.log_path, 'wb') as logfile:
+            logfile.write(content.encode('utf-8'))
 
 
 class MatchParticipation(Base):
@@ -195,21 +219,23 @@ class MatchParticipation(Base):
 
     match_id = db.Column(
         db.Integer,
-        db.ForeignKey('match.id'),
+        db.ForeignKey('match.id', ondelete='CASCADE'),
         primary_key=True)
 
     bot_id = db.Column(
         db.Integer,
-        db.ForeignKey('bot.id'),
+        db.ForeignKey('bot.id', ondelete='CASCADE'),
         primary_key=True)
 
     match = relationship(
         Match,
-        backref=backref('participations', cascade='all, delete-orphan'))
+        backref=backref('participations', cascade='all, delete-orphan',
+                        passive_deletes=True))
 
     bot = relationship(
         Bot,
-        backref=backref('participations', cascade='all, delete-orphan'))
+        backref=backref('participations', cascade='all, delete-orphan',
+                        passive_deletes=True, lazy='dynamic'))
 
     errors = db.Column(db.Text)
 

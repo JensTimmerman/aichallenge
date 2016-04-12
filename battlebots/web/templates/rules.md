@@ -122,7 +122,7 @@ Hieronder een voorbeeld van een spelconfiguratie.
     boyard 10 20 felix 100
     helsingor 20 10 ilion 200
     nox 30 30 neutral 0
-    0 2 roads:
+    2 roads:
     boyard helsingor
     helsingor nox
     2 marches:
@@ -175,6 +175,8 @@ Mocht dit niet duidelijk zijn, kan je altijd eens kijken naar de voorbeeld-bots
 op [de GitHub
 repo](https://github.com/ZeusWPI/aichallenge/tree/master/battlebots/testbots).
 
+## Op je eigen computer testen
+
 Stel dat je nu een dergelijk programma hebt geschreven, bijvoorbeeld genaamd
 `bot.py`, dan willen we deze natuurlijk testen door deze te laten vechten tegen
 andere bots of tegen zichzelf. Hiervoor schrijven we eerste een klein
@@ -203,6 +205,14 @@ argument:
 Vervolgens kunnen we dit verslag gebruiken om het verloop van het gevecht te
 visualisueren. Open het HTML-bestand `visualize/visualize.html` van deze repo in
 je browser en selecteer `sample.data`.
+
+## Laten vechten tegen andere bots
+
+Als je een ietwat werkende bot hebt, kan je deze laten vechten tegen bots van
+andere deelnemers. [Maak een account aan]({{ url_for('register') }}) op deze
+site, laad je bot op en er zullen automatisch gevechten met je bot worden
+uitgevoerd. Hoe meer matches gespeeld, hoe meer je rangschikking ten opzichte
+van de andere bots convergeert.
 
 Zo, nu je weet hoe je bot kan testen, ben je klaar om wicked bots te beginnen
 schrijven!

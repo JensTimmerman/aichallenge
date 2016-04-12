@@ -4,14 +4,16 @@ import shutil
 
 from flask import flash, redirect, render_template, abort, request, url_for
 from flask.ext import login
+from sqlalchemy import desc
 from werkzeug import secure_filename
 
 from battlebots import config
 from battlebots.database import session
 from battlebots.database import access as db
-from battlebots.database.models import Bot, Match, User
+from battlebots.database.models import Bot, Match, MatchParticipation, User
 from battlebots.web import app
 from battlebots.web.forms.bots import NewBotForm, UpdateBotForm
+from battlebots.web.pagination_utils import paginate
 
 
 @app.route('/bots/new', methods=('GET', 'POST'))
@@ -39,7 +41,7 @@ def update_bot(username, botname):
 
     if user is None:
         flash('User {} does not exist.')
-        redirect(url_for('users'))
+        return redirect(url_for('users'))
 
     if bot is None:
         flash('{} does not exist or does not belong to {}'
@@ -58,7 +60,7 @@ def update_bot(username, botname):
         files = request.files.getlist('files')
         parent = p.join(config.BOT_CODE_DIR, user.nickname, bot.name)
         make_files(files, parent)
-
+        db.merge(bot)
         flash('Update bot "%s" succesfully!' % bot.name)
         return redirect(url_for('profile'))
 
@@ -71,7 +73,16 @@ def remove_bot(username, botname):
     if username != login.current_user.nickname:
         abort(400)  # Should not happen
 
-    db.remove_bot(login.current_user, botname)
+    bot = (session.query(Bot)
+           .filter_by(user=login.current_user, name=botname)
+           .one_or_none())
+
+    if bot is None:
+        flash('{} does not exist or does not belong to {}'
+              .format(botname, username))
+        return redirect(url_for('profile'))
+
+    db.remove_bot(bot)
     flash('Removed bot "%s" succesfully!' % botname)
     return redirect(url_for('profile'))
 
@@ -89,8 +100,13 @@ def bot_page(username, botname):
         flash('{} does not exist or does not belong to {}'
               .format(botname, username))
         return redirect(url_for('user_page', username=username))
+    paginated_bot_participations_ = paginate(bot.participations.order_by(
+        desc(MatchParticipation.match_id)
+    ))
 
-    return render_template('bots/bot.html', bot=bot)
+    return render_template(
+        'bots/bot.html', bot=bot,
+        paginated_bot_participations=paginated_bot_participations_)
 
 
 @app.route('/matches/<matchid>')

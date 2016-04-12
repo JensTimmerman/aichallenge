@@ -3,8 +3,7 @@ import shutil
 import logging
 
 from battlebots import config
-from battlebots.database import session, scoped_session
-from battlebots.database.models import Bot
+from battlebots.database import scoped_session
 
 
 def add(instance):
@@ -22,21 +21,19 @@ def delete(instance):
         db.delete(instance)
 
 
-def remove_bot(user, botname):
-    code_dir = os.path.join(config.BOT_CODE_DIR, user.nickname, botname)
+def merge(instance, load=True):
+    with scoped_session() as db:
+        db.merge(instance, load=load)
+
+
+def remove_bot(bot):
+    code_dir = os.path.join(config.BOT_CODE_DIR, bot.user.nickname, bot.name)
     try:
         shutil.rmtree(code_dir)
     except FileNotFoundError:
         # Don't crash if for some reason this dir doesn't exist anymore
         logging.warning('Code dir of bot %s:%s not found (%s)'
-                        % (user.nickname, botname, code_dir))
+                        % (bot.user.nickname, bot.name, code_dir))
         pass
-
-    bot = session.query(Bot).filter_by(user=user, name=botname).one_or_none()
-    if bot is None:
-        logging.warning(
-            'Trying to remove a bot that does not exist. User:{}, Bot:{}'
-            .format(user, botname))
-        return
 
     delete(bot)

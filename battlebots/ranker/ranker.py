@@ -45,8 +45,8 @@ def generate_graph(player_names):
     except sp.SubprocessError as error:
         logging.error('Graph generation failed.')
         logging.error(error)
-        logging.error('Stdout was %s', error.stdout)
-        logging.error('Stderr was %s', error.stderr)
+        logging.error('Stdout was %s', error.output.decode('utf8'))
+        logging.error('Stderr was %s', error.stderr.decode('utf8'))
         raise
 
     return [line.decode('utf8') for line in process.stdout.splitlines()]
@@ -104,14 +104,19 @@ def battle(loop):
             participation = MatchParticipation(bot=bot, errors=warnings)
             match.participations.append(participation)
 
-        # Saves match object, but also adds an ID so we know where to save the
-        # log of the match to.
-        db.expunge(match)
-        access.add(match)
+        try:
+            # Saves match object, but also adds an ID so we know where to save
+            # the log of the match to.
+            db.add(match)
+            db.commit()
 
-        # Store the log file to match.log_path
-        tmp_logfile.seek(0)
-        match.save_log(tmp_logfile.read())
+            # Store the log file to match.log_path
+            tmp_logfile.seek(0)
+            match.save_log(tmp_logfile.read())
+        except:
+            logging.exception("Database had to do a rollback.")
+            db.rollback()
+            raise
 
 
 def battle_loop():
@@ -120,7 +125,7 @@ def battle_loop():
         while True:
             try:
                 battle(loop)
-                sleep(1)
+                sleep(10)
             except Exception:
                 logging.exception('Ranker encountered a fatal error')
                 # Keep trying after a while

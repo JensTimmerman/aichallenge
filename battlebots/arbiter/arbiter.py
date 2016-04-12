@@ -154,6 +154,7 @@ class Road:
         position = 2 * (steps or self.length)
         if self.headed_to[march.destination][position]:
             self.headed_to[march.destination][position].size += march.size
+            march.die()
         else:
             self.headed_to[march.destination][position] = march
 
@@ -248,7 +249,7 @@ class Fort:
         if forces:
             runner_up = largest_force()
             self.garrison -= forces[runner_up]
-        if self.garrison > 0:
+        if self.garrison > 0 and winner:
             winner.capture(self)
 
     def distance(self, neighbour):
